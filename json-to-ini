@@ -24,7 +24,7 @@ def smush(output, object_to_process: dict):
                         for item in v:
                             smush(output,item)
                         continue
-                    
+
                     n = 0
                     for item in v:
                         key = k + "-" + str(n)
@@ -52,6 +52,8 @@ def main(file_path):
         exit(65)
 
     output = open(input.stem + ".ini","+w")
+    if args.section:
+        output.write(INI_SECTION.format(args.section))
     #if line is flat
     smush(output, json_object)
 
