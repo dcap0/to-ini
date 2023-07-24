@@ -1,0 +1,80 @@
+#!/usr/bin/python3
+
+import argparse
+from pathlib import Path
+import json
+import yaml
+    
+INI_SECTION="[{}]\n"
+INI_LINE="{}={}\n"
+
+def smush(output, object_to_process: dict):
+    for k,v in object_to_process.items():
+        match type(v).__name__:
+            case 'dict':
+                output.write(INI_SECTION.format(k))
+                smush(output,v)
+            case 'list':
+                output.write(INI_SECTION.format(k))
+                if len(v) != 0:
+                    
+                    if isinstance(v[0],dict):
+                        for item in v:
+                            smush(output,item)
+                        continue
+
+                    n = 0
+                    for item in v:
+                        key = k + "-" + str(n)
+                        smush(output,{key:item})
+                        n+=1
+            case _:
+                output.write(INI_LINE.format(k,v))
+
+def main(args):
+    
+    input = Path(args.file)
+    
+    if not input.exists():
+        print("File not found")
+        exit(66)
+    
+    if input.is_dir():
+        print("Directory provided. Please provide file.")
+        exit(66)
+
+    file_dict = None
+
+    match input.suffix:
+        case '.json':
+            print('JSON file input')
+            try:
+                file_dict = json.loads(input.read_text())
+            except JSONDecodeError:
+                print("Invalid JSON file")
+                exit(65)
+        case '.yaml' | '.yml':
+            print('YAML file input')
+            try:
+                file_dict = yaml.safe_load(input.read_text())
+            except yaml.YAMLError:
+                print("Invalid YAML file")
+                exit(65)
+        case _:
+            print("Invalid file. Please provide JSON or YAML")
+            exit(65)
+
+    output = open(input.stem + ".ini","+w")
+    if args.section:
+        output.write(INI_SECTION.format(args.section))
+    #if line is flat
+    smush(output, file_dict)
+
+    return
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(prog='to-ini',description='Takes a file, spits out an ini. Works with yaml and json.',epilog='See readme for further details.')
+    parser.add_argument('-f','--file', help='Path to file',required=True)
+    parser.add_argument('-s','--section', help='Name of top level INI section')
+    args = parser.parse_args()
+    main(args)
